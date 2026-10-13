@@ -17,6 +17,144 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+
+# ============================================================
+# DEMO AUTHENTICATION + ONBOARDING (NO DATABASE)
+# Accounts exist only in this Streamlit browser session.
+# This is for demonstration, NOT production authentication.
+# ============================================================
+import hashlib
+
+if "demo_users" not in st.session_state:
+    st.session_state.demo_users = {}
+if "logged_in_email" not in st.session_state:
+    st.session_state.logged_in_email = None
+if "auth_page" not in st.session_state:
+    st.session_state.auth_page = "Welcome"
+if "profiles" not in st.session_state:
+    st.session_state.profiles = {}
+
+def _password_hash(password):
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+def _logout():
+    st.session_state.logged_in_email = None
+    st.session_state.auth_page = "Welcome"
+    st.rerun()
+
+def _show_auth():
+    st.title("⏳ TimeLeak")
+    st.subheader("Understand your time. Improve your habits.")
+    st.caption("Python-only demo: accounts are temporary and are not saved permanently.")
+
+    left, right = st.columns([1, 1])
+    with left:
+        st.markdown("### Welcome to TimeLeak")
+        st.write("Track productive, wasted and neutral time using demo data or a CSV file.")
+        st.info("Without a database, demo accounts are stored only in the current app session. They may disappear when the session restarts.")
+    with right:
+        page = st.radio("Choose an option", ["Login", "Create account"], horizontal=True,
+                        index=0 if st.session_state.auth_page == "Login" else 1 if st.session_state.auth_page == "Create account" else 0)
+        st.session_state.auth_page = page
+
+        if page == "Create account":
+            with st.form("signup_form", clear_on_submit=False):
+                name = st.text_input("Your name")
+                email = st.text_input("Email address").strip().lower()
+                password = st.text_input("Create password", type="password")
+                confirm = st.text_input("Confirm password", type="password")
+                submitted = st.form_submit_button("Create account", use_container_width=True)
+            if submitted:
+                if not name.strip() or not email or "@" not in email:
+                    st.error("Enter your name and a valid email address.")
+                elif len(password) < 8:
+                    st.error("Use a password with at least 8 characters.")
+                elif password != confirm:
+                    st.error("Passwords do not match.")
+                elif email in st.session_state.demo_users:
+                    st.error("This email already has an account in this session. Please log in.")
+                else:
+                    st.session_state.demo_users[email] = {
+                        "name": name.strip(),
+                        "password_hash": _password_hash(password),
+                    }
+                    st.session_state.logged_in_email = email
+                    st.session_state.profiles[email] = {"onboarding_complete": False}
+                    st.success("Account created for this demo. Let's set up your profile.")
+                    st.rerun()
+        else:
+            with st.form("login_form"):
+                email = st.text_input("Email address", key="login_email").strip().lower()
+                password = st.text_input("Password", type="password", key="login_password")
+                submitted = st.form_submit_button("Login", use_container_width=True)
+            if submitted:
+                user = st.session_state.demo_users.get(email)
+                if user and user["password_hash"] == _password_hash(password):
+                    st.session_state.logged_in_email = email
+                    st.rerun()
+                else:
+                    st.error("Account not found in this session, or password is incorrect. Create a demo account first.")
+
+if not st.session_state.logged_in_email:
+    _show_auth()
+    st.stop()
+
+current_email = st.session_state.logged_in_email
+current_user = st.session_state.demo_users.get(current_email, {})
+current_profile = st.session_state.profiles.setdefault(current_email, {"onboarding_complete": False})
+
+if not current_profile.get("onboarding_complete"):
+    st.title("👋 Let's personalize your TimeLeak")
+    st.write("Answer these six questions so the dashboard can use your goals and profile.")
+    with st.form("profile_form"):
+        role = st.selectbox("1. What is your role?", ["Student", "Teacher", "Working professional", "Other"])
+        if role == "Student":
+            education_place = st.selectbox("2. Where do you study?", ["School", "College", "Other"])
+            field = st.selectbox("3. Which stream or field?", [
+                "Information Technology", "Computer Engineering", "Other Engineering",
+                "Commerce", "Science", "Arts", "Medical", "Other"
+            ])
+        elif role == "Teacher":
+            education_place = st.selectbox("2. Where do you teach?", ["School", "College", "Training institute", "Other"])
+            field = st.selectbox("3. Which subject or field do you teach?", [
+                "IT / Computer", "Engineering", "Commerce", "Science", "Arts", "Medical", "Other"
+            ])
+        else:
+            education_place = st.selectbox("2. Which setting best describes you?", ["School", "College", "Workplace", "Other"])
+            field = st.text_input("3. Which field are you in?", placeholder="e.g. IT, business, design")
+        goal = st.selectbox("4. What is your main goal?", [
+            "Reduce wasted time", "Improve study productivity", "Balance work and personal life"
+        ])
+        daily_phone = st.selectbox("5. How much time do you use your phone daily?", [
+            "Under 2 hours", "2–4 hours", "4–6 hours", "Over 6 hours"
+        ])
+        apps_used = st.multiselect("6. Which apps do you use most?", [
+            "Instagram", "YouTube", "WhatsApp", "Snapchat", "Chrome",
+            "LinkedIn", "GitHub", "Telegram", "Coursera", "Other apps"
+        ])
+        save_profile = st.form_submit_button("Save profile and open dashboard", use_container_width=True)
+    if save_profile:
+        current_profile.update({
+            "name": current_user.get("name", ""),
+            "role": role,
+            "education_place": education_place,
+            "field": field,
+            "goal": goal,
+            "daily_phone": daily_phone,
+            "apps_used": apps_used,
+            "onboarding_complete": True,
+        })
+        st.rerun()
+    st.stop()
+
+with st.sidebar:
+    st.markdown("---")
+    st.write(f"Signed in as **{current_user.get('name', 'User')}**")
+    st.caption(f"{current_profile.get('role', 'User')} · {current_profile.get('field', '')}")
+    if st.button("Log out", use_container_width=True):
+        _logout()
+
+
 # -----------------------------
 # Course-specific keywords
 # -----------------------------
@@ -232,9 +370,19 @@ def prepare_data(df, course):
 st.sidebar.title("⏳ TimeLeak")
 st.sidebar.caption("Human Time Waste Intelligence Dashboard")
 
+profile_field = current_profile.get("field", "IT")
+course_options = ["IT", "Mechanical", "Commerce", "Medical"]
+default_course = "IT"
+if "Commerce" in profile_field:
+    default_course = "Commerce"
+elif "Medical" in profile_field:
+    default_course = "Medical"
+elif "Mechanical" in profile_field or "Engineering" in profile_field:
+    default_course = "Mechanical"
 course = st.sidebar.selectbox(
     "Select your course",
-    ["IT", "Mechanical", "Commerce", "Medical"],
+    course_options,
+    index=course_options.index(default_course),
 )
 
 st.sidebar.divider()
@@ -309,6 +457,11 @@ waste_percentage = (
 st.title("⏳ TimeLeak")
 st.markdown(
     f"### Human Time Waste Intelligence Dashboard — **{course}**"
+)
+st.caption(
+    f"Personalized for {current_user.get('name', 'User')} · "
+    f"Goal: {current_profile.get('goal', 'Improve productivity')} · "
+    f"Profile: {current_profile.get('role', 'User')}"
 )
 st.caption(
     "Rule-based analysis of phone usage to identify productive time, "
