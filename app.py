@@ -105,43 +105,62 @@ current_profile = st.session_state.profiles.setdefault(current_email, {"onboardi
 
 if not current_profile.get("onboarding_complete"):
     st.title("👋 Let's personalize your TimeLeak")
-    st.write("Answer these six questions so the dashboard can use your goals and profile.")
+    st.write("Answer these six questions. TimeLeak will use your profession and the type of content you consume to classify productive and wasted time.")
     with st.form("profile_form"):
-        role = st.selectbox("1. What is your role?", ["Student", "Teacher", "Working professional", "Other"])
+        role = st.selectbox("1. What is your role?", ["Student", "Teacher", "Working professional", "Business owner", "Job seeker", "Other"])
+
         if role == "Student":
-            education_place = st.selectbox("2. Where do you study?", ["School", "College", "Other"])
-            field = st.selectbox("3. Which stream or field?", [
+            field = st.selectbox("2. What do you study?", [
                 "Information Technology", "Computer Engineering", "Other Engineering",
-                "Commerce", "Science", "Arts", "Medical", "Other"
+                "Commerce", "Science", "Arts", "Medical", "School student", "Other"
             ])
+            focus_options = ["College/school study", "Assignments and projects", "Exam preparation", "Learning extra skills", "Career and internships"]
+            focus_label = "3. What do you mainly use your phone for related to study?"
         elif role == "Teacher":
-            education_place = st.selectbox("2. Where do you teach?", ["School", "College", "Training institute", "Other"])
-            field = st.selectbox("3. Which subject or field do you teach?", [
-                "IT / Computer", "Engineering", "Commerce", "Science", "Arts", "Medical", "Other"
+            field = st.selectbox("2. What subject do you teach?", [
+                "IT / Computer", "Engineering", "Commerce", "Science", "Arts", "Medical", "School subjects", "Other"
             ])
+            focus_options = ["Preparing lessons", "Researching subject information", "Creating teaching materials", "Checking student work", "Professional development"]
+            focus_label = "3. What do you mainly use your phone for teaching/work?"
+        elif role == "Working professional":
+            field = st.selectbox("2. What is your work field?", ["IT / Software", "Business / Finance", "Education", "Healthcare", "Design / Media", "Sales / Marketing", "Government", "Other"])
+            focus_options = ["Work tasks", "Learning job skills", "Research and information", "Career development", "Communication with colleagues"]
+            focus_label = "3. What do you mainly use your phone for work/career?"
+        elif role == "Business owner":
+            field = st.selectbox("2. What type of business do you run?", ["Online business", "Shop / Retail", "Services", "Education", "Food", "Other"])
+            focus_options = ["Managing business", "Marketing/content creation", "Learning business skills", "Customer communication", "Researching products/markets"]
+            focus_label = "3. What do you mainly use your phone for your business?"
+        elif role == "Job seeker":
+            field = st.selectbox("2. What kind of job are you looking for?", ["IT / Software", "Government", "Business / Finance", "Teaching", "Healthcare", "Design / Media", "Other"])
+            focus_options = ["Job searching", "Preparing for interviews/exams", "Learning skills", "Building a portfolio", "Networking"]
+            focus_label = "3. What do you mainly use your phone for your career?"
         else:
-            education_place = st.selectbox("2. Which setting best describes you?", ["School", "College", "Workplace", "Other"])
-            field = st.text_input("3. Which field are you in?", placeholder="e.g. IT, business, design")
-        goal = st.selectbox("4. What is your main goal?", [
-            "Reduce wasted time", "Improve study productivity", "Balance work and personal life"
-        ])
-        daily_phone = st.selectbox("5. How much time do you use your phone daily?", [
+            field = st.text_input("2. What is your profession or field?", placeholder="e.g. homemaker, freelancer, artist")
+            focus_options = ["Learning something new", "Work or daily tasks", "Researching useful information", "Personal development", "Communication"]
+            focus_label = "3. What do you mainly use your phone for?"
+
+        main_purpose = st.selectbox(focus_label, focus_options)
+        useful_content = st.multiselect("4. Which content do you consider productive/useful?", [
+            "Educational facts and explainers", "Tutorials and skill learning", "Study/lecture videos",
+            "Work-related information", "Career/job information", "News and useful updates", "None of these"
+        ], default=["Educational facts and explainers", "Tutorials and skill learning"])
+        timepass_content = st.multiselect("5. Which content usually becomes time-wasting for you?", [
+            "Funny/comedy reels", "Memes and pranks", "Gossip/celebrity content", "Random entertainment shorts",
+            "Endless scrolling without a purpose", "I don't consider these wasted", "Other"
+        ], default=["Funny/comedy reels", "Memes and pranks", "Endless scrolling without a purpose"])
+        daily_phone = st.selectbox("6. Approximately how much time do you spend on your phone daily?", [
             "Under 2 hours", "2–4 hours", "4–6 hours", "Over 6 hours"
-        ])
-        apps_used = st.multiselect("6. Which apps do you use most?", [
-            "Instagram", "YouTube", "WhatsApp", "Snapchat", "Chrome",
-            "LinkedIn", "GitHub", "Telegram", "Coursera", "Other apps"
         ])
         save_profile = st.form_submit_button("Save profile and open dashboard", use_container_width=True)
     if save_profile:
         current_profile.update({
             "name": current_user.get("name", ""),
             "role": role,
-            "education_place": education_place,
             "field": field,
-            "goal": goal,
+            "main_purpose": main_purpose,
+            "useful_content": useful_content,
+            "timepass_content": timepass_content,
             "daily_phone": daily_phone,
-            "apps_used": apps_used,
             "onboarding_complete": True,
         })
         st.rerun()
